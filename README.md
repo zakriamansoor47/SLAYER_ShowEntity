@@ -1,7 +1,7 @@
 # SLAYER_ShowEntity
-Print Entity on which player is aiming
+Print the Entity Info on which the player is aiming.
 
-## This Information will be printed in Chat, Console, and Logs (Can be enable/disable from Config file)
+## This Information will be printed in Chat, Console, and Logs (Can be enabled/disable from the Config file)
 ```c#
 Console.WriteLine($"----------------------------------");
 Console.WriteLine($"Entity Name: {fileNameWithoutExtension}");
@@ -13,7 +13,8 @@ Console.WriteLine($"Entity Rotation: {entity.AbsRotation}");
 Console.WriteLine($"----------------------------------");
 ```
 ## Commands (Only For Root Admin)
-```
-!show_ent - Glow entity when you Aim on it (Not all entities)
-!print_ent - Print the Information of entity in chat
+```c#
+!show_ent - Glow entity when you Aim at it (Not all entities)
+!print_ent - Print the Information of the entity in chat
+!move_ent <x> <y> <z> OR !move_ent <x> <y> <z> <pitch> <yaw> <roll> - Move the remembered entity to the given location
 ```
