@@ -1,4 +1,4 @@
-﻿using CounterStrikeSharp.API;
+using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Utils;
@@ -17,6 +17,7 @@ using System.Drawing;
 using Microsoft.Extensions.Logging;
 using System.Runtime.InteropServices;
 using System.Reflection;
+using System.Numerics;
 
 namespace SLAYER_ShowEntity;
 public class SLAYER_ShowEntityConfig : BasePluginConfig
@@ -29,7 +30,7 @@ public class SLAYER_ShowEntityConfig : BasePluginConfig
 public partial class SLAYER_ShowEntity : BasePlugin, IPluginConfig<SLAYER_ShowEntityConfig>
 {
     public override string ModuleName => "SLAYER_ShowEntity";
-    public override string ModuleVersion => "1.0";
+    public override string ModuleVersion => "1.1";
     public override string ModuleAuthor => "SLAYER";
     public override string ModuleDescription => "Print Entity on which player is aiming";
     public required SLAYER_ShowEntityConfig Config {get; set;}
@@ -41,6 +42,7 @@ public partial class SLAYER_ShowEntity : BasePlugin, IPluginConfig<SLAYER_ShowEn
     public bool[] PlayerShowingEntity = new bool[64];
     public CBaseEntity?[] PlayerLookingAtEntity = new CBaseEntity[64];
     public CounterStrikeSharp.API.Modules.Timers.Timer?[] RayTraceTimer = new CounterStrikeSharp.API.Modules.Timers.Timer?[64];
+    private CBaseEntity? rememberedEntity = null;
     public override void Load(bool hotReload)
     {
         RegisterEventHandler((EventPlayerSpawn @event, GameEventInfo info)=>
@@ -81,9 +83,9 @@ public partial class SLAYER_ShowEntity : BasePlugin, IPluginConfig<SLAYER_ShowEn
                     {
                         var foundplayer = GetPlayerFromIndex((int)entity.Index);
                         if(foundplayer == null || player == foundplayer)return;
-                        //glow = SetGlowOnPlayer(foundplayer, Color.Green)[1];  // Have to fix this issue on player glow
+                        glow = SetGlowOnPlayer(foundplayer, Color.Green)[1];  // Have to fix this issue on player glow
                     }
-                    else 
+                    else // if entity is not player
                     {
                         if(Distance <= 10f)glow = SetGlowOnEntity(entity.As<CDynamicProp>(), Color.Green);
                     }
@@ -114,6 +116,7 @@ public partial class SLAYER_ShowEntity : BasePlugin, IPluginConfig<SLAYER_ShowEn
 
         var entity = GetClientAimTarget(player);
         if(entity == null) return;
+        rememberedEntity = entity; // Remember the entity
         string Type = "";
         var entities = Utilities.GetAllEntities().ToList();
         foreach(var ent in entities.Where(e => e != null))
@@ -161,5 +164,51 @@ public partial class SLAYER_ShowEntity : BasePlugin, IPluginConfig<SLAYER_ShowEn
             Logger.LogInformation($"Entity Rotation: {entity.AbsRotation}");
             Logger.LogInformation($"----------------------------------");
         }
+    }
+    [ConsoleCommand("move_ent", "Teleport Print Entity")]
+	[RequiresPermissions("@css/root")]
+	public void MoveEntityCMD(CCSPlayerController? player, CommandInfo command)
+    {
+        if (player == null || !player.IsValid || player.Connected != PlayerConnectedState.PlayerConnected || player.TeamNum < 2 || player.Pawn.Value!.LifeState != (byte)LifeState_t.LIFE_ALIVE) return;
+        if (rememberedEntity == null)
+        {
+            player.PrintToChat($"{StringExtensions.ReplaceColorTags(Config.Tag)} {ChatColors.DarkRed}No Entity to teleport! Please use {ChatColors.Green}!print_ent {ChatColors.DarkRed}command first.");
+            return;
+        }
+
+        if(command.ArgCount < 4 || (command.ArgCount > 4 && command.ArgCount < 7))
+        {
+            player.PrintToChat($"{StringExtensions.ReplaceColorTags(Config.Tag)} {ChatColors.DarkRed}Invalid Command! Usage: {ChatColors.Green}!move_ent <x> <y> <z> {ChatColors.DarkRed}OR {ChatColors.Green}!move_ent <x> <y> <z> <pitch> <yaw> <roll>");
+            return;
+        }
+
+        if(command.ArgCount == 4)
+        {
+            for(int i = 1; i <= 3; i++)
+            {
+                if(!IsNumeric(command.ArgByIndex(i)))
+                {
+                    player.PrintToChat($"{StringExtensions.ReplaceColorTags(Config.Tag)} {ChatColors.DarkRed}Invalid Command! Please enter valid numbers.");
+                    return;
+                }
+            }
+            rememberedEntity.Teleport(new CounterStrikeSharp.API.Modules.Utils.Vector(float.Parse(command.ArgByIndex(1)), float.Parse(command.ArgByIndex(2)), float.Parse(command.ArgByIndex(3))));
+        }
+        else if(command.ArgCount == 7)
+        {
+            for(int i = 1; i <= 6; i++)
+            {
+                if(!IsNumeric(command.ArgByIndex(i)))
+                {
+                    player.PrintToChat($"{StringExtensions.ReplaceColorTags(Config.Tag)} {ChatColors.DarkRed}Invalid Command! Please enter valid numbers.");
+                    return;
+                }
+            }
+            rememberedEntity.Teleport(new CounterStrikeSharp.API.Modules.Utils.Vector(float.Parse(command.ArgByIndex(1)), float.Parse(command.ArgByIndex(2)), float.Parse(command.ArgByIndex(3))), new QAngle(float.Parse(command.ArgByIndex(4)), float.Parse(command.ArgByIndex(5)), float.Parse(command.ArgByIndex(6))));
+        }
+    }
+    public bool IsNumeric(string input)
+    {
+        return float.TryParse(input, out _);
     }
 }
