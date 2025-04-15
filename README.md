@@ -1,3 +1,5 @@
+![](https://img.shields.io/github/downloads/zakriamansoor47/SLAYER_ShowEntity/total?style=for-the-badge)
+
 # SLAYER_ShowEntity
 Print the Entity Info on which the player is aiming.
 
